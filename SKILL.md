@@ -34,15 +34,45 @@ argument-hint: "[可选：功能名称，如 research/document]"
 | 专利交底书 | "交底书""专利挖掘""权利要求" | patent-disclosure-skill |
 | 文档格式处理 | "飞书格式""排版""转Word" | ruisearch document模块 |
 > 路由冲突时优先级：专利交底书 → 专利布局调研 → 技术调研/竞品分析 → 通用市场调研。模糊场景优先 ruisearch。
-## 首次使用检查
-首次触发本 skill 时，检查以下依赖并提示用户：
-1. **mcporter**：运行 `mcporter --version`，若不存在则提示：
-   > 检测到 mcporter 未安装，当前使用 WebSearch 作为搜索工具。安装 mcporter 可获得 Exa 语义搜索，搜索质量更好。
-   > 安装命令：`npm install -g mcporter`（需先安装 Node.js）
-   > 配置 Exa：`mcporter config add exa --url https://mcp.exa.ai/mcp && mcporter auth exa`
-2. **Node.js**：若 mcporter 未安装且 `node --version` 也不存在，提示：
-   > 请先安装 Node.js：https://nodejs.org/
-检查完成后不再重复提示。
+## 环境自检（首次触发时自动执行）
+首次触发本 skill 时，必须执行以下三项检查，确保搜索链路可用。**检查完成后不再重复提示。**
+### 检查 1：Node.js
+```bash
+node --version
+```
+若不存在，提示：
+> 检测到 Node.js 未安装。Ruisearch 依赖 mcporter（npm 包）提供 Exa 语义搜索。
+> 请先安装 Node.js（≥18）：https://nodejs.org/
+> 安装后重启终端，再次触发调研即可自动继续配置。
+### 检查 2：mcporter
+```bash
+mcporter --version
+```
+若不存在，提示：
+> 检测到 mcporter 未安装。当前只能使用内置 WebSearch，搜索质量一般。
+> 安装命令：`npm install -g mcporter`
+> 安装后运行：`mcporter config add exa --url https://mcp.exa.ai/mcp && mcporter auth exa`
+> 配置完成后告诉我"好了"，我会验证搜索链路。
+### 检查 3：Exa MCP 可用性（关键）
+mcporter 存在时，**必须实际调用一次**验证 Exa 后端是否可用：
+```bash
+mcporter call 'exa.web_search_exa(query: "test", numResults: 1)'
+```
+- 返回正常 JSON 结果 → 通过 ✅，后续调研全部走 Exa 优先链路
+- 返回错误 / 超时 / 无结果 → 提示：
+  > mcporter 已安装但 Exa MCP 未配置或认证过期。当前降级到 WebSearch。
+  > 修复命令：
+  > ```bash
+  > mcporter config add exa --url https://mcp.exa.ai/mcp
+  > mcporter auth exa
+  > ```
+  > 完成后告诉我"好了"，我会重新验证。
+- 若 mcporter 存在但 `mcporter call` 命令格式不对（可能是旧版本），降级 WebSearch 并提示 `npm update -g mcporter`
+### 检查后的状态标注
+每次调研开始前，在思考中标注当前搜索链路状态：
+- `[Exa]` — Exa 可用，首选搜索
+- `[WebSearch]` — Exa 不可用，使用降级方案
+后续同一次会话中不再重复检查。
 ## 调研深度
 根据用户意图自动判断：
 **快速查询（默认）**

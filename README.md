@@ -1,5 +1,36 @@
 # Ruisearch
 Claude Code 的调研 skill，用于市场调研、技术调研、竞品分析、行业分析、专利调研等需要搜索验证并整理成报告的任务。
+## 环境搭建（必须先做）
+Ruisearch 依赖 Exa 语义搜索引擎获取高质量结果。**不配置搜索后端的话，只能降级到内置 WebSearch，搜索质量会明显下降。**
+### 前置条件
+需要 Node.js（≥18），没有的话先装：https://nodejs.org/
+验证：
+```bash
+node --version   # 应 ≥ v18.0.0
+```
+### 安装 mcporter
+```bash
+npm install -g mcporter
+```
+验证：
+```bash
+mcporter --version
+```
+### 配置 Exa 搜索后端
+```bash
+mcporter config add exa --url https://mcp.exa.ai/mcp
+mcporter auth exa
+```
+验证 Exa 是否真正可用（关键一步，很多人漏掉）：
+```bash
+mcporter call 'exa.web_search_exa(query: "test", numResults: 1)'
+```
+如果返回正常的搜索结果（JSON），说明配置成功。如果报错，检查：
+- 网络是否能访问 `https://mcp.exa.ai/mcp`
+- OAuth 认证是否完成（重新跑 `mcporter auth exa`）
+> **为什么必须验证？** 裸装 `mcporter` 不加 Exa 后端等于没装。首次使用时会自动检测，但不提前配好的话，每次调研都先试 Exa → 失败 → 降级 WebSearch，白白浪费时间。
+### 可选增强：社交平台搜索
+如果需要搜索小红书/抖音/B站/微博/领英/YouTube 等社交平台，额外安装 [agent-reach](https://github.com/Panniantong/Agent-Reach) skill。Ruisearch 的核心搜索链路不依赖它。
 ## 安装
 将 `ruisearch` 文件夹复制到 Claude Code 的 skills 目录：
 ```
@@ -12,7 +43,7 @@ ruisearch/
 ├── README.md
 └── modules/
     ├── research/
-    │   └── rules.md          ← 含专利检索规则
+    │   └── rules.md          ← 含专利检索规则、Exa 搜索
     └── document/
         ├── feishu_compact.md
         ├── standard_markdown.md
@@ -22,30 +53,10 @@ ruisearch/
 ## 依赖工具
 | 工具 | 用途 | 是否必须 | 安装方式 |
 | --- | --- | --- | --- |
-| mcporter | 调用 Exa 语义搜索（效果最好） | 可选，自动降级 WebSearch | `npm install -g mcporter` |
-| Exa MCP 服务 | mcporter 的搜索后端 | 依赖 mcporter | 见下方配置 |
-| WebSearch | 内置搜索工具 | Claude Code 自带 | 无需安装 |
+| mcporter + Exa | 语义搜索（首选，搜索质量显著优于内置搜索） | **强烈推荐** | 见上方「环境搭建」 |
+| WebSearch | 内置搜索工具（Exa 不可用时的降级方案） | Claude Code 自带 | 无需安装 |
 | WebFetch | 读取网页全文、专利详情页 | Claude Code 自带 | 无需安装 |
 | Jina Reader | 读取网页全文 | 内置 curl 即可 | 无需安装 |
-### Exa 搜索配置（可选，强烈推荐）
-安装 mcporter 后，配置 Exa 服务以获得最佳搜索效果：
-1. 安装 mcporter：
-```bash
-npm install -g mcporter
-```
-2. 配置 Exa 服务，在项目目录或全局创建 `mcporter.json`：
-```bash
-mcporter config add exa --url https://mcp.exa.ai/mcp
-```
-3. 完成 OAuth 认证：
-```bash
-mcporter auth exa
-```
-4. 验证配置：
-```bash
-mcporter list exa
-```
-> 不安装 mcporter 也不影响使用，skill 会自动降级到 WebSearch，搜索质量略有差异。
 ## 触发方式
 - 显式：`/ruisearch` 或 `/research`
 - 自然语言：说"调研""查一下""竞品分析""整理报告""专利布局"等

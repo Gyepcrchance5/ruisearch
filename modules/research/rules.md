@@ -18,30 +18,42 @@
 - 标注来源和时间
 ## 搜索工具链（优先尝试，平滑降级）
 ### 工具列表
-**1. Exa 搜索（首选）**
+**1. Exa 语义搜索（首选）**
 ```bash
+# 网页搜索 — 技术和行业调研首选
 mcporter call 'exa.web_search_exa(query: "关键词", numResults: 5)'
+# 代码搜索 — 技术实现细节
+mcporter call 'exa.get_code_context_exa(query: "代码问题", tokensNum: 3000)'
 ```
-语义搜索，效果最好。适用中文技术调研、行业分析、竞品调研。
-**2. WebSearch（标准降级）**
-内置工具。Exa 调用失败（超时 10s 或返回错误）时直接使用，无需重试 Exa，无需标注警告。
+Exa 是高质量 AI 搜索引擎，擅长英文内容和技术文档。核心特点：
+- 语义理解而非关键词匹配，对技术术语和行业概念识别准确
+- 结果质量显著高于通用搜索引擎
+- 支持代码上下文搜索（`get_code_context_exa`）
+- 默认每次返回 5 条，可调高但建议 ≤10（平衡质量和速度）
+使用场景对照：
+| 场景 | 命令 | numResults |
+| --- | --- | --- |
+| 技术调研/行业分析 | `web_search_exa` | 5 |
+| 竞品调研/产品对比 | `web_search_exa` | 5-8 |
+| 代码/实现细节 | `get_code_context_exa` | tokensNum: 3000 |
+| 快速事实查证 | `web_search_exa` | 3 |
+**2. WebSearch（自动降级）**
+内置搜索工具。Exa 调用失败（超时 10s 或返回错误）时直接使用，无需重试 Exa，无需标注警告。
 **3. 专利检索（技术调研/竞品分析时自动启用）**
 专利数据是技术调研和竞品分析的重要数据源。根据查询类型选择不同方式：
 - 专利号精准查询：WebFetch(`https://patents.google.com/patent/{专利号}/zh`)，提取标题、摘要、权利要求、法律状态、同族
 - 关键词查专利：WebSearch("{关键词} 专利 site:patents.google.com")
 - 竞品专利分析：WebSearch("{公司名} 专利布局 {技术领域}")
-- CNIPA关键词检索：`python {skill_dir}/tools/cnipa_epub_search.py {关键词}`（需Playwright环境）
 详见下方「专利检索规则」章节。
-**4. Jina Reader（URL 读取）**
+**4. Jina Reader（URL 全文读取）**
 ```bash
 curl -s "https://r.jina.ai/URL"
 ```
-读取搜索结果中的指定网页全文。
+读取搜索结果中的指定网页全文。用于深度分析关键页面内容。
 ### 降级规则
 - mcporter 命令不存在（command not found）时，视同 Exa 不可用，直接降级 WebSearch
-- Exa 首选，一次失败即降级 WebSearch
-- 不重试失败的工具
-- 不标注降级警告
+- Exa 首选，一次失败即降级 WebSearch（不重试，不标注警告）
+- mcporter 存在但 Exa MCP 未配置/认证过期时，降级 WebSearch
 - Jina Reader 用于读取已知 URL，不作为独立搜索工具
 ### 专利检索规则
 **何时自动启用**
@@ -69,6 +81,36 @@ WebFetch Google Patents 页面后，从返回的 markdown 中提取：
 - CNIPA爬虫数据：中置信度（仅返回摘要，信息有限）
 - WebSearch 专利信息：中低置信度（需交叉验证）
 - 多个来源不一致时：以 Google Patents 为准
+## 股票行情查询
+### 适用场景
+用户说"查一下股价""港股收盘""A股行情""XX股票涨跌"时，使用腾讯行情 API 直接获取实时数据。
+### 接口说明
+腾讯免费行情接口，无鉴权，延迟 3-5 秒。
+```bash
+# 单只
+curl -s "https://qt.gtimg.cn/q=sh600519" | iconv -f GBK -t UTF-8
+# 批量
+curl -s "https://qt.gtimg.cn/q=sh600519,sz000858,r_hk01810" | iconv -f GBK -t UTF-8
+```
+### 代码格式
+- A 股上海：`sh` + 6 位代码（如 sh600519 茅台）
+- A 股深圳：`sz` + 6 位代码（如 sz300750 宁德时代）
+- 港股：`r_hk` + 5 位代码（如 r_hk01810 小米）
+### 返回字段（按 `~` 分隔，关键字段索引）
+- [1] 名称、[2] 代码、[3] 当前价、[4] 昨收、[5] 今开
+- [6] 成交量、[30] 时间戳、[31] 涨跌额、[32] 涨跌幅
+- [33] 最高、[34] 最低、[37] 成交额
+- 港股行末尾有 HKD 货币标识；A 股为 CNY
+### 常用指数代码
+- 恒生指数：`r_hkHSI`
+- 恒生科技：`r_hkHSTECH`
+- 上证指数：`sh000001`
+- 深证成指：`sz399001`
+- 创业板指：`sz399006`
+### 输出规范
+直接解析 API 返回数据，在 chat 内以表格形式展示，包含：股票名称、代码、当前价、涨跌额、涨跌幅。批量查询时按涨跌幅排序。
+### 消息面调研
+如果用户追问"为什么涨/跌"，切换到 ruisearch 的 Exa 搜索模式，搜索"{股票名} {日期} 利好/利空 消息面"，在 chat 内直接回答并标注来源和置信度。
 ## 关键词组合模板
 ### 产品调研
 ```
