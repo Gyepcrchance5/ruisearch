@@ -1,115 +1,161 @@
 ---
 name: ruisearch
 description: |
-  市场调研、技术调研、竞品分析、行业分析等需要搜索验证并整理成报告的任务。
-  文档格式处理：飞书格式输出、标准Markdown排版、Word友好格式、报告整理。
-  当用户要求调研某类产品/技术/市场、验证信息、搜集数据、对比分析、整理报告时，必须调用此skill。
-version: "2.1.0"
+  多功能通用 skill：17 平台搜索、市场调研、竞品分析、股票行情、文档格式处理。
+  覆盖平台：网页搜索(Exa)、小红书、抖音、微博、推特、B站、V2EX、Reddit、LinkedIn、GitHub、YouTube、播客、微信公众号、RSS。
+  产出能力：调研报告(含专利检索)、飞书/标准MD/Word三种文档格式。
+version: "3.0.0"
 user-invocable: true
-argument-hint: "[可选：功能名称，如 research/document]"
+argument-hint: "[可选：功能名称]"
+triggers:
+  - search: 搜/查/找/search/搜索/查一下/帮我搜
+  - social:
+    - 小红书: xiaohongshu/xhs/小红书/红书
+    - 抖音: douyin/抖音
+    - Twitter: twitter/推特/x.com/推文
+    - 微博: weibo/微博
+    - B站: bilibili/b站/哔哩哔哩
+    - V2EX: v2ex
+    - Reddit: reddit
+  - career: 招聘/职位/求职/linkedin/领英/找工作
+  - dev: github/代码/仓库/gh/issue/pr/分支/commit
+  - web: 网页/链接/文章/公众号/微信文章/rss/读一下/打开这个
+  - video: youtube/视频/播客/字幕/小宇宙/转录/yt
+  - finance: 雪球/股票/stock/xueqiu/行情/股价/基金/财报
+  - research: 调研/报告/分析报告/竞品分析/市场分析/行业分析/供应商/技术路线
+  - patent: 专利/查新/专利布局/技术壁垒/知识产权/IP
+  - format: 飞书格式/排版/Word格式/标准Markdown/整理报告
 ---
+
 # Ruisearch
-多功能通用skill，提供调研分析、文档处理能力。
-## 功能模块
-| 模块 | 功能 | 入口文件 |
-| --- | --- | --- |
-| research | 调研/竞品/市场分析 | `modules/research/rules.md` |
-| document | 格式处理 | `modules/document/feishu_compact.md` |
-## 触发条件
-以下场景**必须**自动调用本skill：
-- 调研类：用户要求调研/调查/搜集/验证某类产品、技术、市场、供应商信息
-- 分析类：用户要求竞品分析、对比分析、行业分析、技术演进梳理
-- 报告类：用户要求整理调研报告、汇总数据
-- 格式类：用户要求飞书格式排版、Markdown整理（不含交底书格式调整）
-- 专利调研类：用户要求调研专利布局、查新、竞品专利分析、技术壁垒分析
-显式触发：`/ruisearch`、`/research`
-## 路由规则
-| 场景 | 触发方式 | 路由 |
-| --- | --- | --- |
-| 通用市场调研 | "调研XX市场" | ruisearch research模块 |
-| 技术调研 | "调研XX技术""XX技术路线" | ruisearch research模块 + 专利检索 |
-| 竞品分析 | "竞品分析""XX公司对比" | ruisearch research模块 + 专利检索 |
-| 供应商调研 | "XX供应商""供应链分析" | ruisearch research模块 + 专利检索 |
-| 专利布局调研 | "专利布局""查新""专利分析" | ruisearch research模块（专利为主数据源） |
-| 专利交底书 | "交底书""专利挖掘""权利要求" | patent-disclosure-skill |
-| 文档格式处理 | "飞书格式""排版""转Word" | ruisearch document模块 |
-> 路由冲突时优先级：专利交底书 → 专利布局调研 → 技术调研/竞品分析 → 通用市场调研。模糊场景优先 ruisearch。
+
+多功能通用 skill，提供 17 平台搜索、调研分析、股票行情、文档处理能力。
+
+## 路由表
+
+| 用户意图 | 路由 | 详细文档 |
+|---------|------|---------|
+| 网页搜索/代码搜索 | search | [references/search.md](references/search.md) |
+| 小红书/抖音/微博/推特/B站/V2EX/Reddit | social | [references/social.md](references/social.md) |
+| 招聘/职位/LinkedIn | career | [references/career.md](references/career.md) |
+| GitHub/代码 | dev | [references/dev.md](references/dev.md) |
+| 网页/文章/公众号/RSS | web | [references/web.md](references/web.md) |
+| YouTube/B站/播客字幕 | video | [references/video.md](references/video.md) |
+| 股票/行情/股价/基金 | finance | `modules/research/rules.md`（股票行情查询章节） |
+| 调研/报告/竞品/专利 | research | `modules/research/rules.md` |
+| 文档格式处理 | format | `modules/document/` |
+
+> 路由冲突优先级：调研报告 → 股票行情 → 社交媒体 → 通用搜索。模糊场景默认快速查询。
+
+## 零配置快速命令
+
+```bash
+# Exa 网页搜索
+mcporter call 'exa.web_search_exa(query: "query", numResults: 5)'
+
+# 通用网页阅读
+curl -s "https://r.jina.ai/URL"
+
+# 股票行情（腾讯接口，无鉴权）
+curl -s "https://qt.gtimg.cn/q=r_hk01810" | iconv -f GBK -t UTF-8
+
+# GitHub 搜索
+gh search repos "query" --sort stars --limit 10
+
+# Twitter 搜索
+twitter search "query" --limit 10
+
+# YouTube/B站字幕
+yt-dlp --write-sub --skip-download -o "/tmp/%(id)s" "URL"
+
+# Reddit 搜索
+rdt search "query" --limit 10
+
+# V2EX 热门
+curl -s "https://www.v2ex.com/api/topics/hot.json" -H "User-Agent: agent-reach/1.0"
+```
+
 ## 环境自检（首次触发时自动执行）
-首次触发本 skill 时，必须执行以下三项检查，确保搜索链路可用。**检查完成后不再重复提示。**
+
+首次触发本 skill 时，必须执行以下检查，确保搜索链路可用。
+
 ### 检查 1：Node.js
 ```bash
 node --version
 ```
-若不存在，提示：
-> 检测到 Node.js 未安装。Ruisearch 依赖 mcporter（npm 包）提供 Exa 语义搜索。
-> 请先安装 Node.js（≥18）：https://nodejs.org/
-> 安装后重启终端，再次触发调研即可自动继续配置。
+若不存在，提示安装 Node.js（≥18）。
+
 ### 检查 2：mcporter
 ```bash
 mcporter --version
 ```
-若不存在，提示：
-> 检测到 mcporter 未安装。当前只能使用内置 WebSearch，搜索质量一般。
-> 安装命令：`npm install -g mcporter`
-> 安装后运行：`mcporter config add exa --url https://mcp.exa.ai/mcp && mcporter auth exa`
-> 配置完成后告诉我"好了"，我会验证搜索链路。
-### 检查 3：Exa MCP 可用性（关键）
-mcporter 存在时，**必须实际调用一次**验证 Exa 后端是否可用：
+若不存在，提示 `npm install -g mcporter`。
+
+### 检查 3：Exa MCP 可用性
 ```bash
 mcporter call 'exa.web_search_exa(query: "test", numResults: 1)'
 ```
-- 返回正常 JSON 结果 → 通过 ✅，后续调研全部走 Exa 优先链路
-- 返回错误 / 超时 / 无结果 → 提示：
-  > mcporter 已安装但 Exa MCP 未配置或认证过期。当前降级到 WebSearch。
-  > 修复命令：
-  > ```bash
-  > mcporter config add exa --url https://mcp.exa.ai/mcp
-  > mcporter auth exa
-  > ```
-  > 完成后告诉我"好了"，我会重新验证。
-- 若 mcporter 存在但 `mcporter call` 命令格式不对（可能是旧版本），降级 WebSearch 并提示 `npm update -g mcporter`
-### 检查后的状态标注
-每次调研开始前，在思考中标注当前搜索链路状态：
-- `[Exa]` — Exa 可用，首选搜索
-- `[WebSearch]` — Exa 不可用，使用降级方案
-后续同一次会话中不再重复检查。
+- 返回正常 JSON → 通过 ✅，后续调研走 Exa 优先链路
+- 返回错误/超时 → 提示配置 Exa，当前降级 WebSearch
+
+### 状态标注
+每次调研开始前标注当前搜索链路：`[Exa]` 或 `[WebSearch]`。
+
 ## 调研深度
-根据用户意图自动判断：
-**快速查询（默认）**
-触发词："查一下""帮我搜""XX是什么""XX多少钱"
-流程：单次搜索 → chat内直接回答，无文件输出。
-**完整报告**
+
+### 快速查询（默认）
+触发词："查一下""帮我搜""XX是什么""XX多少钱""股价"
+流程：单次搜索 → chat 内直接回答，标注来源和置信度。不生成文件。
+
+### 完整报告
 触发词："调研""分析报告""整理报告""市场分析""竞品对比"
 流程：搜索两遍 → 分析一遍 → 输出到 `./outputs/`。
+详细规则见 [modules/research/rules.md](modules/research/rules.md)。
+
 意图不明确时默认快速查询，用户可追加"整理成报告"升级。
-搜索工具链、关键词模板、置信度标注等详细规则见 `modules/research/rules.md`。
+
 ## 文档格式
+
 默认飞书紧凑格式。用户可通过关键词切换：
+
 | 格式 | 触发关键词 | 入口文件 |
 | --- | --- | --- |
-| 飞书紧凑（默认） | 默认/"飞书格式" | `feishu_compact.md` |
-| 标准Markdown | "标准Markdown" | `standard_markdown.md` |
-| Word友好 | "Word格式""docx" | `word_friendly.md` |
-格式文件位于 `modules/document/` 目录下。生成文档前必须先读取对应格式文件。
+| 飞书紧凑（默认） | 默认/"飞书格式" | `modules/document/feishu_compact.md` |
+| 标准Markdown | "标准Markdown" | `modules/document/standard_markdown.md` |
+| Word友好 | "Word格式""docx" | `modules/document/word_friendly.md` |
+
 ## 输出规范
+
 ### 输出目录
-- 在项目目录内工作时：`./outputs/`
+- 项目内：`./outputs/`
 - 用户指定路径时按用户路径
-- 输出目录不存在时自动创建
+- 目录不存在时自动创建
+
 ### 文件命名
-`{主题}_{MMDD}_v{N}.md`
-示例：`储能市场调研_0615_v1.md`
+`{主题}_{MMDD}_v{N}.md`，如 `储能市场调研_0615_v1.md`
+
 ### 版本管理
-- 首次输出：`_v1.md`
-- 迭代更新：`_v2.md`、`_v3.md`...
-- 不覆盖旧稿，每次另存为新版本
+首次 `_v1.md`，迭代 `_v2.md` → `_v3.md`，不覆盖旧稿。
+
+## 工作区规则
+
+**不要在 skill 目录创建文件。** 使用 `/tmp/` 存放临时输出，项目 `./outputs/` 存放正式产出。
+
 ## 目录结构
+
 ```
 .claude/skills/ruisearch/
 ├── SKILL.md
+├── references/                      ← 平台工具文档
+│   ├── search.md
+│   ├── social.md
+│   ├── web.md
+│   ├── video.md
+│   ├── career.md
+│   └── dev.md
 └── modules/
     ├── research/
-    │   └── rules.md          ← 含专利检索规则
+    │   └── rules.md                 ← 调研规则、专利检索、股票API、关键词模板
     └── document/
         ├── feishu_compact.md
         ├── standard_markdown.md
