@@ -77,29 +77,59 @@ curl -s "https://www.v2ex.com/api/topics/hot.json" -H "User-Agent: agent-reach/1
 
 ## 环境自检（首次触发时自动执行）
 
-首次触发本 skill 时，必须执行以下检查，确保搜索链路可用。
+首次触发本 skill 时，**不要只是报告问题——直接修复问题**。按顺序执行以下检查，每个步骤失败时自动执行修复命令，无需询问用户。唯一需要用户参与的步骤是 OAuth 浏览器认证。
 
 ### 检查 1：Node.js
 ```bash
 node --version
 ```
-若不存在，提示安装 Node.js（≥18）。
+- ✅ 存在 → 继续
+- ❌ 不存在 → 告知用户去 https://nodejs.org/ 安装 LTS 版本（≥18），安装后重启终端。暂停后续检查。
 
 ### 检查 2：mcporter
 ```bash
 mcporter --version
 ```
-若不存在，提示 `npm install -g mcporter`。
+- ✅ 存在 → 继续
+- ❌ 不存在 → **直接执行** `npm install -g mcporter`，安装成功后继续。若安装失败，告知用户检查 Node.js 和 npm 环境。
 
-### 检查 3：Exa MCP 可用性
+### 检查 3：Exa MCP 已注册
 ```bash
 mcporter call 'exa.web_search_exa(query: "test", numResults: 1)'
 ```
-- 返回正常 JSON → 通过 ✅，后续调研走 Exa 优先链路
-- 返回错误/超时 → 提示配置 Exa，当前降级 WebSearch
+- ✅ 返回正常 JSON → 通过，标注 `[Exa]` 可用
+- ❌ `Unknown MCP server 'exa'` → Exa 未注册。**直接执行：**
+  ```bash
+  mcporter config add exa --url https://mcp.exa.ai/mcp
+  ```
+  然后继续检查 4。
+- ❌ 认证错误（401/403）→ Exa 已注册但未认证，继续检查 4。
+
+### 检查 4：Exa MCP 已认证
+注册后首次调用如果返回认证错误，**直接执行：**
+```bash
+mcporter auth exa
+```
+该命令会打开浏览器引导用户完成 Exa OAuth 认证（免费，无需手动获取 API Key）。认证完成后重新验证：
+```bash
+mcporter call 'exa.web_search_exa(query: "test", numResults: 1)'
+```
+- ✅ 返回正常 JSON → 通过，标注 `[Exa]` 可用
+- ❌ 仍然失败 → 标注 `[WebSearch]` 降级。告知用户可访问 https://dashboard.exa.ai 手动注册获取 API Key，然后运行 `mcporter auth exa`。
+
+### 检查 5：可选 CLI 工具（不阻塞，按需提醒）
+以下工具不是必须的，当用户首次触发对应平台搜索时再提示安装：
+
+| 工具 | 安装命令 | 触发场景 |
+|------|---------|---------|
+| xhs | `pipx install xiaohongshu-cli` | 搜小红书 |
+| twitter | `pipx install twitter-cli` | 搜推特 |
+| rdt | `pipx install rdt-cli` | 搜 Reddit |
+| bili | `pipx install bilibili-cli` | 搜 B站 |
+| douyin | `pipx install douyin-mcp-server` | 搜抖音 |
 
 ### 状态标注
-每次调研开始前标注当前搜索链路：`[Exa]` 或 `[WebSearch]`。
+每次调研开始前在思考中标注当前搜索链路：`[Exa]` / `[WebSearch]`。
 
 ## 调研深度
 

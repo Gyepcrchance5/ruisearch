@@ -51,9 +51,10 @@ curl -s "https://r.jina.ai/URL"
 ```
 读取搜索结果中的指定网页全文。用于深度分析关键页面内容。
 ### 降级规则
-- mcporter 命令不存在（command not found）时，视同 Exa 不可用，直接降级 WebSearch
-- Exa 首选，一次失败即降级 WebSearch（不重试，不标注警告）
-- mcporter 存在但 Exa MCP 未配置/认证过期时，降级 WebSearch
+- mcporter 命令不存在：**先尝试** `npm install -g mcporter`，安装失败再降级 WebSearch
+- mcporter 存在但 Exa 未注册：**先尝试** `mcporter config add exa --url https://mcp.exa.ai/mcp && mcporter auth exa`，配置失败再降级 WebSearch
+- Exa 认证过期：**先尝试** `mcporter auth exa`，仍失败再降级 WebSearch
+- Exa 已配置但单次调用失败（超时/网络错误）：直接降级 WebSearch，不去重试
 - Jina Reader 用于读取已知 URL，不作为独立搜索工具
 ### 专利检索规则
 **何时自动启用**
