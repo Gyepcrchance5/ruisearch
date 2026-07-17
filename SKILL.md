@@ -1,9 +1,10 @@
 ---
 name: ruisearch
 description: |
-  多功能通用 skill：17 平台搜索、市场调研、竞品分析、股票行情、文档格式处理。
-  覆盖平台：网页搜索(Exa)、小红书、抖音、微博、推特、B站、V2EX、Reddit、LinkedIn、GitHub、YouTube、播客、微信公众号、RSS。
-  产出能力：调研报告(含专利检索)、飞书/标准MD/Word三种文档格式。
+  当用户说"搜""查""找""调研""股价""行情""财报""竞品""市场"时自动触发。
+  所有网页搜索走 Exa（mcporter），WebSearch 仅作降级。
+  覆盖：股票行情(腾讯API)、17平台搜索(小红书/推特/B站/Reddit/GitHub/YouTube等)、调研报告(含专利检索)、飞书/标准MD/Word三种文档格式。
+  不自动触发于：纯代码编写、纯聊天、Git 操作、文件编辑。
 version: "3.0.0"
 user-invocable: true
 argument-hint: "[可选：功能名称]"
@@ -33,17 +34,20 @@ triggers:
 
 ## 路由表
 
-| 用户意图 | 路由 | 详细文档 |
-|---------|------|---------|
-| 网页搜索/代码搜索 | search | [references/search.md](references/search.md) |
-| 小红书/抖音/微博/推特/B站/V2EX/Reddit | social | [references/social.md](references/social.md) |
-| 招聘/职位/LinkedIn | career | [references/career.md](references/career.md) |
-| GitHub/代码 | dev | [references/dev.md](references/dev.md) |
-| 网页/文章/公众号/RSS | web | [references/web.md](references/web.md) |
-| YouTube/B站/播客字幕 | video | [references/video.md](references/video.md) |
-| 股票/行情/股价/基金 | finance | `modules/research/rules.md`（股票行情查询章节） |
-| 调研/报告/竞品/专利 | research | `modules/research/rules.md` |
-| 文档格式处理 | format | `modules/document/` |
+唯一工具选择来源。所有 Exa 调用不可用时自动降级 WebSearch，非硬性禁令。
+
+| 用户意图 | 路由 | 首选工具 | 详细文档 |
+|---------|------|---------|---------|
+| 网页搜索/代码搜索 | search | `mcporter` + Exa | [references/search.md](references/search.md) |
+| 小红书/抖音/微博/推特/B站/V2EX/Reddit | social | 对应 CLI / Exa | [references/social.md](references/social.md) |
+| 招聘/职位/LinkedIn | career | Exa | [references/career.md](references/career.md) |
+| GitHub/代码 | dev | `gh` CLI / Exa | [references/dev.md](references/dev.md) |
+| 网页/文章/公众号/RSS | web | Jina Reader / Exa | [references/web.md](references/web.md) |
+| YouTube/B站/播客字幕 | video | `yt-dlp` / Exa | [references/video.md](references/video.md) |
+| 股票查价（多少/涨跌） | finance | 腾讯行情 API | `modules/research/rules.md` |
+| 股票查原因（为什么涨/跌） | finance | `mcporter` + Exa | `modules/research/rules.md` |
+| 调研/报告/竞品/专利 | research | `mcporter` + Exa | `modules/research/rules.md` |
+| 文档格式处理 | format | — | `modules/document/` |
 
 > 路由冲突优先级：调研报告 → 股票行情 → 社交媒体 → 通用搜索。模糊场景默认快速查询。
 
@@ -146,13 +150,14 @@ mcporter call 'exa.web_search_exa(query: "test", numResults: 1)'
 
 ## 文档格式
 
-默认飞书紧凑格式。用户可通过关键词切换：
+未指定格式时默认飞书紧凑。可通过关键词切换：
 
-| 格式 | 触发关键词 | 入口文件 |
-| --- | --- | --- |
-| 飞书紧凑（默认） | 默认/"飞书格式" | `modules/document/feishu_compact.md` |
-| 标准Markdown | "标准Markdown" | `modules/document/standard_markdown.md` |
-| Word友好 | "Word格式""docx" | `modules/document/word_friendly.md` |
+| 格式 | 触发关键词 | 入口文件 | 备注 |
+| --- | --- | --- | --- |
+| 飞书紧凑 | 默认 / "飞书格式" | `modules/document/feishu_compact.md` | Markdown 适配飞书渲染器 |
+| 飞书原生 | "推送到飞书""飞书文档" | `modules/document/feishu_native.md` | 走 MCP 直接写入飞书，callout 标注结论、lark-table 表格 |
+| 标准Markdown | "标准Markdown" | `modules/document/standard_markdown.md` | CommonMark，无平台特殊约束 |
+| Word友好 | "Word格式" / "docx" | `modules/document/word_friendly.md` | 面向 pandoc / md_to_docx 转换 |
 
 ## 输出规范
 
